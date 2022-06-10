@@ -118,6 +118,7 @@ void path_handler(char path[100], char str[20]) {
 
 int main(void) {
 	initscr();
+	
 	int height, width, y, x;
 	struct dirent **namelist;
     int dir1, ch, offset = 0;
