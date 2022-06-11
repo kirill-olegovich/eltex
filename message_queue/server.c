@@ -6,6 +6,10 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
+#include <unistd.h>
+#include <sys/wait.h>
+#include <signal.h>
+
 #define SERVER_KEY_PATHNAME "/tmp/mqueue_server_key"
 #define PROJECT_ID 'M'
 #define QUEUE_PERMISSIONS 0660
@@ -58,6 +62,7 @@ void update_users(struct user user_list[10], char name[20], int qid, int action)
 int main (int argc, char **argv) {
     key_t msg_queue_key;
     int qid;
+    pid_t pid;
     struct message my_message;
     struct user user_list[10];
     char chat[1024];
@@ -80,50 +85,62 @@ int main (int argc, char **argv) {
 		memset(user_list[i].name, 0, 20);
     }
 
-    while (1) {
-        // read an incoming message
-        if (msgrcv (qid, &my_message, sizeof (struct message_text), 0, 0) == -1) {
-            perror ("msgrcv");
-            exit (1);
-        }
+    pid = fork();
 
-        char buffer[1024];
-
-        if (strncmp(my_message.message_text.buf, "exit", 4) == 0) {
-	    	update_users(user_list, my_message.message_text.name, my_message.message_text.qid, 1);
-        	sprintf(buffer, "<%s> left the chat\n", my_message.message_text.name);
-        }
-        
-        else if (strncmp(my_message.message_text.buf, "init", 4) == 0) {
-	    	update_users(user_list, my_message.message_text.name, my_message.message_text.qid, 0);
-        	sprintf(buffer, "<%s> has joined\n", my_message.message_text.name);
-        }
-		
-		else sprintf(buffer, "%s: %s\n", my_message.message_text.name, my_message.message_text.buf);
-
-		int client_qid;
-
-        strcat(chat, buffer);
-        strcpy(my_message.message_text.chat, chat);
-        memcpy(my_message.message_text.user_list, user_list, sizeof(struct user) * 10);
-		
-        for (int i=0; i<10; i++) {
-        	if (user_list[i].qid == -1) continue;
-
-        	client_qid = user_list[i].qid;
-        
-	        // send reply message to client
-	        if (msgsnd (client_qid, &my_message, sizeof(struct message_text), 0) == -1) {  
-	            perror ("msgsnd");
+    if (pid == 0) {
+	    while (1) {
+	        // read an incoming message
+	        if (msgrcv (qid, &my_message, sizeof (struct message_text), 0, 0) == -1) {
+	            perror ("msgrcv");
 	            exit (1);
 	        }
 
-	        printf("response from <%s>\n", user_list[i].name);
-        }
+	        char buffer[1024];
 
-        printf("\n");
+	        if (strncmp(my_message.message_text.buf, "exit", 4) == 0) {
+		    	update_users(user_list, my_message.message_text.name, my_message.message_text.qid, 1);
+	        	sprintf(buffer, "<%s> left the chat\n", my_message.message_text.name);
+	        }
+	        
+	        else if (strncmp(my_message.message_text.buf, "init", 4) == 0) {
+		    	update_users(user_list, my_message.message_text.name, my_message.message_text.qid, 0);
+	        	sprintf(buffer, "<%s> has joined\n", my_message.message_text.name);
+	        }
+			
+			else sprintf(buffer, "%s: %s\n", my_message.message_text.name, my_message.message_text.buf);
 
-        // printf("response from <%s>\n", my_message.message_text.name);
+			int client_qid;
+
+	        strcat(chat, buffer);
+	        strcpy(my_message.message_text.chat, chat);
+	        memcpy(my_message.message_text.user_list, user_list, sizeof(struct user) * 10);
+			
+	        for (int i=0; i<10; i++) {
+	        	if (user_list[i].qid == -1) continue;
+
+	        	client_qid = user_list[i].qid;
+	        
+		        // send reply message to client
+		        if (msgsnd (client_qid, &my_message, sizeof(struct message_text), 0) == -1) {  
+		            perror ("msgsnd");
+		            exit (1);
+		        }
+
+		        printf("sending to <%s>\n", user_list[i].name);
+	        }
+
+	        printf("\n");
+	    }
+    }
+
+    else if (pid > 0) {
+    	char input[10];
+
+    	do {
+    		fgets(input, 10, stdin);
+    	} while (strncmp(input, "stop", 4) != 0);
+
+    	kill(pid, SIGKILL);
     }
 
     exit(0);
