@@ -18,7 +18,7 @@ int main(void) {
 	}
 
 	memset(&serveraddr, 0, sizeof(serveraddr)); 
-    memset(&clientaddr, 0, sizeof(clientaddr)); 
+	memset(&clientaddr, 0, sizeof(clientaddr)); 
 
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_port = htons(8888);
