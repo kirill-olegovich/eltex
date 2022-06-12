@@ -21,19 +21,19 @@ int main(int argc, char *argv[]) {
 	N = 100;
 
 	while ((opt = getopt(argc, argv, "N:")) != -1) {
-    	switch (opt) {
-            case 'N':
-                N = strtoul(optarg, NULL, 0);
-                break;
+		switch (opt) {
+		    case 'N':
+		        N = strtoul(optarg, NULL, 0);
+		        break;
 
-            default:
-                fprintf(stderr, "Usage: %s [-N number of threads] arg...\n", argv[0]);
-                exit(EXIT_FAILURE);
-        }
-    }
+		    default:
+		        fprintf(stderr, "Usage: %s [-N number of threads] arg...\n", argv[0]);
+		        exit(EXIT_FAILURE);
+		}
+	}
 
-    int index[N];
-    pthread_t thread[N];
+	int index[N];
+	pthread_t thread[N];
 
 	for (int i=0; i<N; i++) {
 		index[i] = i+1;
