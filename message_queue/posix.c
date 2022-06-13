@@ -1,68 +1,69 @@
+#include <fcntl.h>
+#include <mqueue.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/wait.h>
 #include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <sys/stat.h>
-#include <mqueue.h>
-
+#include <sys/wait.h>
+#include <unistd.h>
 
 int main(void) {
-	pid_t pid;
-	pid = fork();
+    pid_t pid;
+    pid = fork();
 
-	if (pid == 0) {
-		struct mq_attr attr;
-		mqd_t mqid;
-		
-		memset(&attr, 0, sizeof attr);
-		attr.mq_msgsize = 4096;
-		attr.mq_maxmsg = 10;
+    if (pid == 0) {
+        struct mq_attr attr;
+        mqd_t mqid;
 
-		mqid = mq_open("/buffer", O_CREAT | O_WRONLY, 0600, &attr);
+        memset(&attr, 0, sizeof attr);
+        attr.mq_msgsize = 4096;
+        attr.mq_maxmsg = 10;
 
-		if (mqid == -1) {
-			perror("mq_open");
-			exit(1);
-		}
+        mqid = mq_open("/buffer", O_CREAT | O_WRONLY, 0600, &attr);
 
-		mq_send(mqid, "qweasdzxc", 9, 0);
-		mq_close(mqid);
+        if (mqid == -1) {
+            perror("mq_open");
+            exit(1);
+        }
 
-		exit(0);
+        mq_send(mqid, "qweasdzxc", 9, 0);
+        mq_close(mqid);
 
-	} else if (pid > 0) {
-		int child_status;
-		waitpid(pid, &child_status, 0);
+        exit(0);
 
-		if (WEXITSTATUS(child_status) == 1) exit(1);
+    } else if (pid > 0) {
+        int child_status;
+        waitpid(pid, &child_status, 0);
 
-		struct mq_attr attr;
-		unsigned int prior = 0;
-		mqd_t mqid;
+        if (WEXITSTATUS(child_status) == 1)
+            exit(1);
 
-		mqid = mq_open("/buffer", O_RDONLY);
+        struct mq_attr attr;
+        unsigned int prior = 0;
+        mqd_t mqid;
 
-		if (mqid == -1) {
-			perror("mq_open");
-			exit(1);
-		}
+        mqid = mq_open("/buffer", O_RDONLY);
 
-		mq_getattr(mqid, &attr);
-		char buffer[attr.mq_msgsize];
+        if (mqid == -1) {
+            perror("mq_open");
+            exit(1);
+        }
 
-		if ((mq_receive(mqid, buffer, attr.mq_msgsize, &prior)) == -1) {
-			perror("mq_receive");
-			exit(1);
-		}
+        mq_getattr(mqid, &attr);
+        char buffer[attr.mq_msgsize];
 
-		printf("%s %ld\n", buffer, attr.mq_msgsize);
+        if ((mq_receive(mqid, buffer, attr.mq_msgsize, &prior)) == -1) {
+            perror("mq_receive");
+            exit(1);
+        }
 
-		mq_close(mqid);
-		mq_unlink("/buffer");
+        printf("%s %ld\n", buffer, attr.mq_msgsize);
 
-	} else printf("Error\n");
+        mq_close(mqid);
+        mq_unlink("/buffer");
 
-	return 0;
+    } else
+        printf("Error\n");
+
+    return 0;
 }

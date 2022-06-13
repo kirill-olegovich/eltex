@@ -1,11 +1,11 @@
-#include <unistd.h>
-#include <stdio.h>
 #include <signal.h>
+#include <stdio.h>
+#include <unistd.h>
 
 int main(void) {
-	int num;
-	scanf("%d", &num);
-	kill(num, 15);
-	
-	return 0;
+    int num;
+    scanf("%d", &num);
+    kill(num, 15);
+
+    return 0;
 }

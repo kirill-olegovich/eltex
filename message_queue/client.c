@@ -1,25 +1,23 @@
+#include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ncurses.h>
 
-#include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
+#include <sys/types.h>
 
-#include <unistd.h>
-#include <sys/wait.h>
 #include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
 
 #define SERVER_KEY_PATHNAME "/tmp/mqueue_server_key"
 #define PROJECT_ID 'M'
 
-
-struct user{
+struct user {
     int qid;
     char name[20];
 };
-
 
 struct message_text {
     int qid;
@@ -29,14 +27,12 @@ struct message_text {
     struct user user_list[10];
 };
 
-
 struct message {
     long message_type;
     struct message_text message_text;
 };
 
-
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
     initscr();
     curs_set(0);
 
@@ -46,19 +42,19 @@ int main (int argc, char **argv) {
     struct message my_message, return_message;
 
     // create my client queue for receiving messages from server
-    if ((myqid = msgget (IPC_PRIVATE, 0660)) == -1) {
-        perror ("msgget: myqid");
-        exit (1);
+    if ((myqid = msgget(IPC_PRIVATE, 0660)) == -1) {
+        perror("msgget: myqid");
+        exit(1);
     }
 
-    if ((server_queue_key = ftok (SERVER_KEY_PATHNAME, PROJECT_ID)) == -1) {
-        perror ("ftok");
-        exit (1);
+    if ((server_queue_key = ftok(SERVER_KEY_PATHNAME, PROJECT_ID)) == -1) {
+        perror("ftok");
+        exit(1);
     }
 
-    if ((server_qid = msgget (server_queue_key, 0)) == -1) {
-        perror ("msgget: server_qid");
-        exit (1);
+    if ((server_qid = msgget(server_queue_key, 0)) == -1) {
+        perror("msgget: server_qid");
+        exit(1);
     }
 
     my_message.message_type = 1;
@@ -108,7 +104,8 @@ int main (int argc, char **argv) {
     if (pid == 0) {
         while (1) {
             // read response from server
-            if (msgrcv(myqid, &return_message, sizeof (struct message_text), 0, 0) == -1) {
+            if (msgrcv(myqid, &return_message, sizeof(struct message_text), 0,
+                       0) == -1) {
                 perror("msgrcv");
                 exit(1);
             }
@@ -121,9 +118,10 @@ int main (int argc, char **argv) {
 
             wclear(user_list);
 
-            for (int i=0; i<10; i++) {
+            for (int i = 0; i < 10; i++) {
                 if (return_message.message_text.user_list[i].qid != -1) {
-                    mvwprintw(user_list, j, 0, "%s", return_message.message_text.user_list[i].name);
+                    mvwprintw(user_list, j, 0, "%s",
+                              return_message.message_text.user_list[i].name);
                     j++;
                 }
             }
@@ -137,7 +135,8 @@ int main (int argc, char **argv) {
     else if (pid > 0) {
         do {
             // send message to server
-            if (msgsnd(server_qid, &my_message, sizeof (struct message_text), 0) == -1) {
+            if (msgsnd(server_qid, &my_message, sizeof(struct message_text),
+                       0) == -1) {
                 perror("msgsnd");
                 exit(1);
             }
@@ -160,8 +159,8 @@ int main (int argc, char **argv) {
 
         // remove message queue
         if (msgctl(myqid, IPC_RMID, NULL) == -1) {
-            perror ("msgctl");
-            exit (1);
+            perror("msgctl");
+            exit(1);
         }
     }
 
