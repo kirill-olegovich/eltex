@@ -25,21 +25,13 @@ int main(void) {
 
 	length = sizeof(serveraddr);
 
-	while (1) {
-		bzero(buffer, 1024);
-		
-		printf("Message to server: ");
-
-		fgets(buffer, 1024, stdin);
-
-		sendto(socketfd, buffer, sizeof(buffer), MSG_CONFIRM, (struct sockaddr*)&serveraddr, length);
-
-		if (strncmp(buffer, "exit", 4) == 0) break;		
-
-		recvfrom(socketfd, buffer, 1024, MSG_WAITALL, (struct sockaddr*)&serveraddr, &length);
+	bzero(buffer, 1024);
 	
-		printf("\nFrom server: %s\n", buffer);
-	}
+	sendto(socketfd, "HI", 2, MSG_CONFIRM, (struct sockaddr*)&serveraddr, length);
+
+	recvfrom(socketfd, buffer, 1024, MSG_WAITALL, (struct sockaddr*)&serveraddr, &length);
+
+	printf("From server: %s\n", buffer);
 
 	close(socketfd);
 
