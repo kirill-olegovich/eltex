@@ -38,15 +38,10 @@ int main(void) {
         recvfrom(socketfd, buffer, 1024, MSG_WAITALL,
                  (struct sockaddr *)&clientaddr, &length);
 
-        printf("\nFrom client: %s\nMessage to client: ", buffer);
+        printf("From client (%d): %s\n", socketfd, buffer);
 
-        fgets(buffer, 1024, stdin);
-
-        sendto(socketfd, buffer, 1024, MSG_CONFIRM,
-               (struct sockaddr *)&clientaddr, length);
-
-        if (strncmp(buffer, "exit", 4) == 0)
-            break;
+        sendto(socketfd, "OK", 2, MSG_CONFIRM, (struct sockaddr *)&clientaddr,
+               length);
     }
 
     close(socketfd);

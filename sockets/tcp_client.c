@@ -18,7 +18,7 @@ int main(void) {
 
     serveraddr.sin_family = AF_INET;
     serveraddr.sin_port = htons(8888);
-    serveraddr.sin_addr.s_addr = inet_addr("192.168.1.36");
+    serveraddr.sin_addr.s_addr = INADDR_ANY;
 
     connect(socketfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr));
 
