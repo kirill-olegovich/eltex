@@ -1,12 +1,11 @@
+#include <errno.h>
+#include <netinet/ip.h>
+#include <netinet/udp.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <netinet/udp.h>
-#include <netinet/ip.h>
 #include <unistd.h>
-
 
 int main(void) {
     int sock, recv;
@@ -15,7 +14,7 @@ int main(void) {
     char buffer[1024];
     char rec_buffer[1024];
     struct sockaddr_in ip;
-    struct udphdr udp;
+    struct udphdr udp, rec_udp;
 
     sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
 
@@ -24,9 +23,9 @@ int main(void) {
 
     udp.source = htons(9999);
     udp.dest = htons(8888);
-    // udp.check = 0;
+    udp.check = 0;
     udp.len = htons(sizeof(struct udphdr) + strlen(message));
-    
+
     memset(buffer, 0, sizeof(buffer));
     memcpy(buffer, (char *)&udp, sizeof(udp));
     memcpy(buffer + sizeof(udp), (char *)&message, sizeof(message));
@@ -35,19 +34,24 @@ int main(void) {
 
     for (;;) {
         sleep(1);
-        
-        sendto(sock, buffer, sizeof(udp) + sizeof(message), 0, (struct sockaddr *)&ip, sizeof(ip));
+
+        sendto(sock, buffer, sizeof(udp) + sizeof(message), 0,
+               (struct sockaddr *)&ip, sizeof(ip));
 
         memset(rec_buffer, 0, sizeof(rec_buffer));
+        memset((struct udphdr *)&rec_udp, 0, sizeof(rec_udp));
 
-        recv = recvfrom(sock, (char *)&rec_buffer, sizeof(rec_buffer), 0, (struct sockaddr *)&ip, &length);
+        recv = recvfrom(sock, (char *)&rec_buffer, sizeof(rec_buffer), 0,
+                        (struct sockaddr *)&ip, &length);
 
-        // if (8888 == htons(ip.sin_port)) {
-        //     printf("YES\n");
-        //     break;
-        // }
+        memcpy((struct udphdr *)&rec_udp, (struct udphdr *)&rec_buffer[20], 8);
 
-        printf("%d\n", htons(ip.sin_port));
+        if (8888 == htons(rec_udp.source)) {
+            printf("%s\n", rec_buffer + 28);
+            break;
+        }
+
+        printf("%d\n", htons(rec_udp.source));
     }
 
     close(sock);
