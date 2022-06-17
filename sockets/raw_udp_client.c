@@ -8,41 +8,51 @@
 #include <unistd.h>
 
 int main(void) {
-    int sock, recv;
+    int sock;
     socklen_t length;
-    char message[] = "HI";
-    char buffer[1024];
+    char *message;
+    char packet[1024];
     char rec_buffer[1024];
-    struct sockaddr_in ip;
-    struct udphdr udp, rec_udp;
 
-    sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
+    memset(packet, 0, 1024);
 
-    ip.sin_family = AF_INET;
-    ip.sin_addr.s_addr = inet_addr("127.0.0.1");
+    struct udphdr *udp = (struct udphdr *)packet;
+    struct sockaddr_in sin;
+    struct udphdr rec_udp;
 
-    udp.source = htons(9999);
-    udp.dest = htons(8888);
-    udp.check = 0;
-    udp.len = htons(sizeof(struct udphdr) + strlen(message));
+    if ((sock = socket(AF_INET, SOCK_RAW, IPPROTO_UDP)) < 0) {
+        perror("sock");
+        exit(1);
+    }
 
-    memset(buffer, 0, sizeof(buffer));
-    memcpy(buffer, (char *)&udp, sizeof(udp));
-    memcpy(buffer + sizeof(udp), (char *)&message, sizeof(message));
+    message = packet + sizeof(struct udphdr);
+    strcpy(message, "HI");
 
-    length = sizeof(ip);
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+    udp->source = htons(9999);
+    udp->dest = htons(8888);
+    udp->check = 0;
+    udp->len = htons(sizeof(struct udphdr) + strlen(message));
+
+    length = sizeof(struct sockaddr_in);
+
+    if (sendto(sock, packet, sizeof(struct udphdr) + sizeof(message), 0,
+               (struct sockaddr *)&sin, length) < 0) {
+        perror("sendto");
+        close(sock);
+        exit(1);
+    }
 
     for (;;) {
         sleep(1);
 
-        sendto(sock, buffer, sizeof(udp) + sizeof(message), 0,
-               (struct sockaddr *)&ip, sizeof(ip));
-
         memset(rec_buffer, 0, sizeof(rec_buffer));
         memset((struct udphdr *)&rec_udp, 0, sizeof(rec_udp));
 
-        recv = recvfrom(sock, (char *)&rec_buffer, sizeof(rec_buffer), 0,
-                        (struct sockaddr *)&ip, &length);
+        recvfrom(sock, (char *)&rec_buffer, sizeof(rec_buffer), 0,
+                 (struct sockaddr *)&sin, &length);
 
         memcpy((struct udphdr *)&rec_udp, (struct udphdr *)&rec_buffer[20], 8);
 
@@ -51,7 +61,7 @@ int main(void) {
             break;
         }
 
-        printf("%d\n", htons(rec_udp.source));
+        // printf("%d\n", htons(rec_udp.source));
     }
 
     close(sock);
