@@ -1,7 +1,6 @@
 obj-m += hello-1.o 
 obj-m += hello-2.o 
 obj-m += hello-3.o 
-obj-m += create_file.o 
 
 PWD := $(CURDIR) 
 
