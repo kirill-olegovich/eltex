@@ -7,41 +7,36 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-
-unsigned short csum(unsigned short *ptr,int nbytes) 
-{
+unsigned short csum(unsigned short *ptr, int nbytes) {
     register long sum;
     unsigned short oddbyte;
     register short answer;
 
-    sum=0;
-    while(nbytes>1) {
-        sum+=*ptr++;
-        nbytes-=2;
+    sum = 0;
+    while (nbytes > 1) {
+        sum += *ptr++;
+        nbytes -= 2;
     }
-    if(nbytes==1) {
-        oddbyte=0;
-        *((u_char*)&oddbyte)=*(u_char*)ptr;
-        sum+=oddbyte;
+    if (nbytes == 1) {
+        oddbyte = 0;
+        *((u_char *)&oddbyte) = *(u_char *)ptr;
+        sum += oddbyte;
     }
 
-    sum = (sum>>16)+(sum & 0xffff);
-    sum = sum + (sum>>16);
-    answer=(short)~sum;
-    
-    return(answer);
+    sum = (sum >> 16) + (sum & 0xffff);
+    sum = sum + (sum >> 16);
+    answer = (short)~sum;
+
+    return (answer);
 }
 
-
-struct pseudo_header
-{
+struct pseudo_header {
     u_int32_t source_address;
     u_int32_t dest_address;
     u_int8_t placeholder;
     u_int8_t protocol;
     u_int16_t udp_length;
 };
-
 
 int main(void) {
     int sock, length, one = 1;
@@ -75,7 +70,8 @@ int main(void) {
     ip->ihl = 5;
     ip->version = 4;
     ip->tos = 0;
-    ip->tot_len = sizeof(struct iphdr) + sizeof(struct udphdr) + strlen(message);
+    ip->tot_len =
+        sizeof(struct iphdr) + sizeof(struct udphdr) + strlen(message);
     ip->id = htonl(54321);
     ip->frag_off = 0;
     ip->ttl = 64;
@@ -96,13 +92,15 @@ int main(void) {
     psh.protocol = 17;
     psh.udp_length = htons(sizeof(struct udphdr) + strlen(message));
 
-    int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(message); 
+    int psize =
+        sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(message);
     char pseudopacket[psize];
 
     memset(pseudopacket, 0, psize);
 
     memcpy(pseudopacket, (char *)&psh, sizeof(struct pseudo_header));
-    memcpy(pseudopacket + sizeof(struct pseudo_header) , udp , sizeof(struct udphdr) + strlen(message));
+    memcpy(pseudopacket + sizeof(struct pseudo_header), udp,
+           sizeof(struct udphdr) + strlen(message));
 
     udp->check = csum((unsigned short *)pseudopacket, psize);
 
@@ -111,19 +109,21 @@ int main(void) {
 
     length = sizeof(struct sockaddr_in);
 
-    if (sendto(sock, packet, ip->tot_len, 0, (struct sockaddr *)&sin, length) < 0) {
-            perror("sendto");
-            exit(1);
+    if (sendto(sock, packet, ip->tot_len, 0, (struct sockaddr *)&sin, length) <
+        0) {
+        perror("sendto");
+        exit(1);
     }
 
     for (;;) {
         sleep(1);
- 
+
         memset(rec_buffer, 0, sizeof(rec_buffer));
         memset((struct iphdr *)&rec_ip, 0, sizeof(rec_ip));
         memset((struct udphdr *)&rec_udp, 0, sizeof(rec_udp));
 
-        if (recvfrom(sock, (char *)&rec_buffer, sizeof(rec_buffer), 0, (struct sockaddr *)&sin, &length) < 0) {
+        if (recvfrom(sock, (char *)&rec_buffer, sizeof(rec_buffer), 0,
+                     (struct sockaddr *)&sin, &length) < 0) {
             perror("recvfrom");
         }
 
