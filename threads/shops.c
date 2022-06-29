@@ -4,32 +4,66 @@
 #include <time.h>
 #include <unistd.h>
 
-long t = 0;
-int shops[5], customers[3];
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+int shops[5];
+int clients[3];
+int threads[3];
+pthread_mutex_t mutexes[5] = {PTHREAD_MUTEX_INITIALIZER};
 
-int check_customers(void) {
-    for (int i = 0; i < 3; ++i)
-        if (customers[i] > 0)
-            return 0;
-    return 1;
-}
+void *func(void *arg) {
+    int id = *((int *)arg);
 
-void *pthread_func(void *args) {
+    for (int i = 0; i < 5; i++) {
+        if (clients[id] < 1)
+            break;
 
-    pthread_mutex_lock(&lock);
+        if (pthread_mutex_trylock(&mutexes[i]) == 0) {
+            int or_client = clients[id];
+            int or_shop = shops[i];
 
-    if (!check_customers() && t == 0) {
-        t = 1;
+            if (shops[i] == 0)
+                continue;
 
-        printf("Start\n");
+            if (clients[id] >= shops[i]) {
+                clients[id] -= shops[i];
+                shops[i] = 0;
+            } else {
+                shops[i] -= clients[id];
+                clients[id] = 0;
+            }
 
-        pthread_cond_wait(&cond, &lock);
+            pthread_mutex_unlock(&mutexes[i]);
+            printf("Client [%d] spent %d$ (was %d$, now %d$) in shop [%d] (was "
+                   "%d$, now %d$)\n",
+                   id + 1, or_client - clients[id], or_client, clients[id],
+                   i + 1, or_shop, shops[i]);
+            sleep(2);
+        } else {
+            if (i == 2)
+                i = 0;
+        }
     }
 
-    pthread_mutex_unlock(&lock);
-    printf("End\n");
+    return NULL;
+}
+
+void *func2(void *arg) {
+    for (int i = 0; i < 5; i++) {
+        if (clients[0] == 0 && clients[1] == 0 && clients[2] == 0)
+            break;
+
+        if (pthread_mutex_trylock(&mutexes[i]) == 0) {
+            int or_shop = shops[i];
+
+            shops[i] += 500;
+            pthread_mutex_unlock(&mutexes[i]);
+            printf("Loader have brought 500$ to shop [%d] (was %d$, now %d$)\n",
+                   i + 1, or_shop, shops[i]);
+            sleep(1);
+        } else {
+            if (i == 4)
+                i = 0;
+        }
+    }
 
     return NULL;
 }
@@ -37,18 +71,31 @@ void *pthread_func(void *args) {
 int main(void) {
     srand(time(NULL));
 
-    pthread_t tid1, tid2;
+    pthread_t thread[4];
+
+    for (int i = 0; i < 3; i++)
+        pthread_mutex_init(&mutexes[i], NULL);
 
     for (int i = 0; i < 5; i++)
-        shops[i] = (rand() % 101) + 950;
+        shops[i] = (rand() % 101) + 1000;
+
     for (int i = 0; i < 3; i++)
-        customers[i] = (rand() % 1001) + 4500;
+        clients[i] = (rand() % 101) + 2000;
 
-    pthread_create(&tid1, NULL, pthread_func, NULL);
-    // sleep(1);
-    // pthread_create(&tid2, NULL, pthread_func, NULL);
+    for (int i = 0; i < 3; i++) {
+        threads[i] = i;
+        pthread_create(&thread[i], NULL, func, &threads[i]);
+    }
 
-    pthread_join(tid2, NULL);
+    pthread_create(&thread[3], NULL, func2, NULL);
+
+    for (int i = 0; i < 3; i++)
+        pthread_join(thread[i], NULL);
+
+    pthread_join(thread[3], NULL);
+
+    for (int i = 0; i < 3; i++)
+        pthread_mutex_destroy(&mutexes[i]);
 
     return 0;
 }
